@@ -1,0 +1,6 @@
+flask
+flask-socketio
+ollama
+pygame
+sqlalchemy
+python-dotenv

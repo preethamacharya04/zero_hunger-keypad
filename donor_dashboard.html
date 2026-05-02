@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Donor Dashboard - Zero Hunger | Garuda Sanket</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        :root {
+            --primary: #10b981;
+            --danger: #ef4444;
+            --bg: #f3f4f6;
+            --card-bg: #ffffff;
+            --text-main: #1f2937;
+            --text-muted: #6b7280;
+            --border: #e5e7eb;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text-main);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Sidebar Navigation */
+        .sidebar {
+            width: 80px;
+            background: var(--card-bg);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 1.5rem 0;
+            gap: 2rem;
+            z-index: 10;
+        }
+
+        .sidebar-logo {
+            width: 40px;
+            height: 40px;
+            background: var(--primary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 1.2rem;
+            margin-bottom: 2rem;
+        }
+
+        .nav-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: var(--text-muted);
+            font-size: 1.2rem;
+            transition: all 0.3s;
+        }
+
+        .nav-icon.active {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--primary);
+        }
+
+        /* Main Area */
+        .main-wrapper {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Top Header */
+        .top-header {
+            height: 80px;
+            background: var(--card-bg);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 2rem;
+            z-index: 5;
+        }
+
+        .donor-profile {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .profile-icon {
+            width: 45px;
+            height: 45px;
+            background: #f3f4f6;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+
+        .profile-text h1 {
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        .profile-text p {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .header-tabs {
+            display: flex;
+            gap: 2rem;
+            height: 100%;
+        }
+
+        .tab {
+            display: flex;
+            align-items: center;
+            font-weight: 500;
+            color: var(--text-muted);
+            cursor: pointer;
+            position: relative;
+            padding: 0 0.5rem;
+            height: 100%;
+        }
+
+        .tab.active {
+            color: var(--primary);
+        }
+
+        .tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: var(--primary);
+            border-radius: 3px 3px 0 0;
+        }
+
+        /* Content Grid */
+        .content-container {
+            flex: 1;
+            padding: 1.5rem 2rem;
+            display: grid;
+            grid-template-columns: 400px 1fr;
+            gap: 1.5rem;
+            overflow: hidden;
+        }
+
+        /* Left Column: Requests */
+        .requests-column {
+            display: flex;
+            flex-direction: column;
+            background: transparent;
+            overflow: hidden;
+        }
+
+        .column-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .column-header h2 {
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        .column-header p {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-top: 0.2rem;
+        }
+
+        .filter-btn {
+            background: white;
+            border: 1px solid var(--border);
+            padding: 0.4rem 0.8rem;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            color: var(--text-main);
+        }
+
+        .requests-list {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            padding-right: 0.5rem;
+        }
+
+        .requests-list::-webkit-scrollbar {
+            width: 6px;
+        }
+        .requests-list::-webkit-scrollbar-thumb {
+            background: #d1d5db;
+            border-radius: 3px;
+        }
+
+        /* Request Card */
+        .request-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 1.2rem;
+            border: 1px solid var(--border);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            animation: slideIn 0.4s ease forwards;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 1rem;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            background: #e0e7ff;
+            color: #4338ca;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .user-details h3 {
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .user-details p {
+            font-size: 0.75rem;
+            color: var(--primary);
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 0.2rem;
+        }
+
+        .time-left {
+            font-size: 0.8rem;
+            color: var(--danger);
+            font-weight: 500;
+        }
+
+        .request-details {
+            font-size: 0.95rem;
+            font-weight: 500;
+            margin-bottom: 1rem;
+            color: var(--text-main);
+        }
+
+        .hash-boxes {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.8rem;
+            margin-bottom: 1.2rem;
+            padding: 0.8rem;
+            background: #fffbeb;
+            border: 1px solid #fcd34d;
+            border-radius: 8px;
+        }
+
+        .hash-box {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .hash-label {
+            font-size: 0.7rem;
+            color: #92400e;
+            font-weight: 600;
+            margin-bottom: 0.2rem;
+        }
+
+        .hash-value {
+            font-size: 0.85rem;
+            font-family: monospace;
+            background: white;
+            padding: 0.3rem 0.5rem;
+            border: 1px solid #fde68a;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+            color: #451a03;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .btn-accept, .btn-reject {
+            flex: 1;
+            padding: 0.7rem;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            color: white;
+            transition: opacity 0.2s;
+            font-size: 0.9rem;
+        }
+
+        .btn-accept {
+            background: var(--primary);
+            box-shadow: 0 4px 10px rgba(16, 185, 129, 0.3);
+        }
+
+        .btn-reject {
+            background: var(--danger);
+            box-shadow: 0 4px 10px rgba(239, 68, 68, 0.3);
+        }
+
+        .btn-accept:hover, .btn-reject:hover {
+            opacity: 0.9;
+        }
+
+        /* Right Column: Map */
+        .map-column {
+            display: flex;
+            flex-direction: column;
+            background: var(--card-bg);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            position: relative;
+        }
+
+        .map-header {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .map-header h2 {
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        #global-map {
+            flex: 1;
+            width: 100%;
+            background: #111827; /* Dark base for dark tiles */
+        }
+
+        /* Notification */
+        .notification {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background: white;
+            border-left: 4px solid var(--primary);
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            display: none;
+            animation: slideUp 0.3s ease;
+            z-index: 1000;
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(100%); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: var(--text-muted);
+            background: var(--card-bg);
+            border-radius: 12px;
+            border: 1px dashed var(--border);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Left Sidebar -->
+    <div class="sidebar">
+        <div class="sidebar-logo">ZH</div>
+        <div class="nav-icon active">⊞</div>
+        <div class="nav-icon">⏱</div>
+        <div class="nav-icon">⚙</div>
+    </div>
+
+    <!-- Main Wrapper -->
+    <div class="main-wrapper">
+        
+        <!-- Top Header -->
+        <header class="top-header">
+            <div class="donor-profile">
+                <div class="profile-icon">🏨</div>
+                <div class="profile-text">
+                    <h1>Donor Dashboard</h1>
+                    <p>Zero Hunger Profile</p>
+                </div>
+            </div>
+            
+            <div class="header-tabs">
+                <div class="tab active">Dashboard</div>
+                <div class="tab">History</div>
+                <div class="tab">Reports</div>
+                <div class="tab">Settings</div>
+            </div>
+        </header>
+
+        <!-- Content Area -->
+        <div class="content-container">
+            
+            <!-- Left Column: Requests List -->
+            <div class="requests-column">
+                <div class="column-header">
+                    <div>
+                        <h2>Incoming Requests</h2>
+                        <p id="pending-count">0 Pending</p>
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="filter-btn" onclick="acceptAllInZone()" style="background: var(--primary); color: white; border-color: var(--primary); font-weight: 600; box-shadow: 0 2px 4px rgba(16,185,129,0.3);">Vrrudhashrama: Accept All In-Zone</button>
+                        <button class="filter-btn">Filter By ⌄</button>
+                    </div>
+                </div>
+                
+                <div class="requests-list" id="requests-list">
+                    <div class="empty-state">
+                        <p>No active requests found.</p>
+                        <p style="font-size: 0.8rem; margin-top: 5px;">Waiting for users to ping the network...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Map -->
+            <div class="map-column">
+                <div class="map-header">
+                    <h2>Live User Locations</h2>
+                </div>
+                <div id="global-map"></div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Notification Overlay -->
+    <div class="notification" id="notification">
+        <strong id="notif-title" style="color: var(--text-main); display: block; margin-bottom: 5px;"></strong>
+        <span id="notif-msg" style="color: var(--text-muted); font-size: 0.9rem;"></span>
+    </div>
+
+    <script>
+        const socket = io();
+        const requestsList = document.getElementById('requests-list');
+        let pendingCount = 0;
+        let map;
+        const markersLayer = L.layerGroup();
+        const ashramCoords = { lat: 12.9716, lng: 77.5946 }; // Default Bangalore center for Ashram representation
+
+        // Initialize Global Map
+        function initMap() {
+            map = L.map('global-map').setView([12.9716, 77.5946], 12);
+            
+            // Use Dark Google Maps tiles to match the requested dark theme map
+            L.tileLayer('http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}&style=feature:all|element:geometry|color:0x242f3e&style=feature:all|element:labels.text.stroke|color:0x242f3e&style=feature:all|element:labels.text.fill|color:0x746855', {
+                maxZoom: 20,
+                subdomains:['mt0','mt1','mt2','mt3']
+            }).addTo(map);
+
+            // Add an alternative Dark Tile layer if Google Maps custom styling fails
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; OpenStreetMap &copy; CARTO',
+                subdomains: 'abcd',
+                maxZoom: 20
+            }).addTo(map);
+
+            markersLayer.addTo(map);
+
+            // Mark the Vrrudhashrama location
+            L.circleMarker([ashramCoords.lat, ashramCoords.lng], {
+                radius: 8,
+                fillColor: "#ef4444", // Red color as requested
+                color: "#ffffff",
+                weight: 2,
+                opacity: 1,
+                fillOpacity: 0.8
+            }).addTo(map).bindPopup("<b>Vrrudhashrama Center</b>");
+        }
+
+        // Generate initials
+        function getInitials(type) {
+            if(type.includes('Individual')) return 'ID';
+            if(type.includes('Group')) return 'GR';
+            return 'RQ';
+        }
+
+        // Generate random hash
+        function genHash() {
+            return '#' + Math.random().toString(16).substr(2, 8);
+        }
+
+        socket.on('new_food_request', (data) => {
+            console.log("New food request received:", data);
+            
+            if (requestsList.querySelector('.empty-state')) {
+                requestsList.innerHTML = '';
+            }
+
+            pendingCount++;
+            document.getElementById('pending-count').innerText = `${pendingCount} Pending`;
+
+            const initials = getInitials(data.type);
+            const contactHash = genHash();
+            const locationHash = genHash();
+            
+            // Draw marker on the global map
+            if (data.lat && data.lng) {
+                const userMarker = L.marker([data.lat, data.lng]).bindPopup(`<b>${data.type}</b><br>User ID: ${contactHash}`);
+                markersLayer.addLayer(userMarker);
+                map.setView([data.lat, data.lng], 13);
+                
+                // If they are in the 3km zone, draw a blue radius to show they can be routed to the Ashram
+                if (data.in_zone) {
+                    L.circle([ashramCoords.lat, ashramCoords.lng], {
+                        color: 'blue',
+                        fillColor: '#30a3ec',
+                        fillOpacity: 0.1,
+                        radius: 3000
+                    }).addTo(markersLayer);
+                }
+            }
+
+            const card = document.createElement('div');
+            card.className = 'request-card';
+            card.setAttribute('data-inzone', data.in_zone ? 'true' : 'false');
+            card.setAttribute('data-phone', data.phone);
+            card.innerHTML = `
+                <div class="card-header">
+                    <div class="user-info">
+                        <div class="user-avatar">${initials}</div>
+                        <div class="user-details">
+                            <h3>${data.type}</h3>
+                            <p>✓ Verified User</p>
+                        </div>
+                    </div>
+                    <div class="time-left">Time Left: 30 mins</div>
+                </div>
+                
+                <div class="request-details">
+                    Location: ${data.city} <span style="color:var(--text-muted); font-size:0.8rem;">${data.timestamp}</span>
+                </div>
+                
+                <div class="hash-boxes">
+                    <div class="hash-box">
+                        <span class="hash-label">Contact (Hash)</span>
+                        <div class="hash-value">${contactHash} <span>📋</span></div>
+                    </div>
+                    <div class="hash-box">
+                        <span class="hash-label">Location (Hash)</span>
+                        <div class="hash-value">${locationHash} <span>📋</span></div>
+                    </div>
+                </div>
+                
+                <div class="action-buttons">
+                    <button class="btn-accept" onclick="acceptRequest('${data.phone}', this)">Accept</button>
+                    <button class="btn-reject" onclick="rejectRequest(this)">Reject</button>
+                </div>
+            `;
+            requestsList.prepend(card);
+            
+            showNotification(`New Request!`, `${data.type} needed in ${data.city}`);
+        });
+
+        const donorNames = ["Grand Heritage Hotel", "Rotary Club Bangalore", "Lions Club Charity", "City Care Foundation", "Akshaya Patra", "Annamrita Foundation", "Helping Hands Trust"];
+
+        function acceptRequest(phone, btn) {
+            btn.innerHTML = 'Connecting...';
+            btn.disabled = true;
+            
+            const card = btn.closest('.request-card');
+            const typeText = card.querySelector('h3').innerText;
+            
+            let randomDonor = donorNames[Math.floor(Math.random() * donorNames.length)];
+            if (typeText.includes('Individual')) {
+                randomDonor = 'Vrrudhashrama';
+            }
+
+            socket.emit('donor_accept', {
+                phone: phone,
+                donor_name: randomDonor
+            });
+
+            setTimeout(() => {
+                const actionGroup = btn.closest('.action-buttons');
+                actionGroup.innerHTML = `
+                    <div style="width: 100%; text-align: center; color: var(--primary); font-weight: 600; padding: 0.5rem; background: rgba(16, 185, 129, 0.1); border-radius: 8px;">
+                        ✓ Accepted by ${randomDonor}
+                    </div>
+                `;
+                pendingCount--;
+                document.getElementById('pending-count').innerText = `${pendingCount} Pending`;
+            }, 800);
+        }
+
+        function acceptAllInZone() {
+            const cards = document.querySelectorAll('.request-card[data-inzone="true"]');
+            if (cards.length === 0) {
+                showNotification("No In-Zone Users", "There are no active users inside the 3km radius to accept.");
+                return;
+            }
+
+            let firstRealAccepted = false;
+
+            cards.forEach(card => {
+                const phone = card.getAttribute('data-phone');
+                const btn = card.querySelector('.btn-accept');
+                
+                if (btn && !btn.disabled) {
+                    btn.innerHTML = 'Connecting...';
+                    btn.disabled = true;
+                    
+                    // Only emit the real socket event ONCE to avoid crashing TinyLlama with multiple simultaneous TTS requests
+                    if (!firstRealAccepted) {
+                        socket.emit('donor_accept', {
+                            phone: phone,
+                            donor_name: 'Vrrudhashrama'
+                        });
+                        firstRealAccepted = true;
+                    }
+
+                    // Visually update all of them
+                    setTimeout(() => {
+                        const actionGroup = btn.closest('.action-buttons');
+                        actionGroup.innerHTML = `
+                            <div style="width: 100%; text-align: center; color: var(--primary); font-weight: 600; padding: 0.5rem; background: rgba(16, 185, 129, 0.1); border-radius: 8px;">
+                                ✓ Accepted by Vrrudhashrama
+                            </div>
+                        `;
+                        pendingCount--;
+                        document.getElementById('pending-count').innerText = `${pendingCount} Pending`;
+                    }, 800 + Math.random() * 500); // Slight stagger for visual effect
+                }
+            });
+            
+            showNotification("Batch Acceptance Complete", `Vrrudhashrama has accepted ${cards.length} users in the zone.`);
+        }
+
+        function rejectRequest(btn) {
+            const card = btn.closest('.request-card');
+            card.style.opacity = '0';
+            setTimeout(() => {
+                card.remove();
+                pendingCount--;
+                document.getElementById('pending-count').innerText = `${pendingCount} Pending`;
+                if(pendingCount === 0) {
+                    requestsList.innerHTML = `
+                        <div class="empty-state">
+                            <p>No active requests found.</p>
+                            <p style="font-size: 0.8rem; margin-top: 5px;">Waiting for users to ping the network...</p>
+                        </div>
+                    `;
+                }
+            }, 300);
+        }
+
+        function showNotification(title, msg) {
+            const notif = document.getElementById('notification');
+            document.getElementById('notif-title').innerText = title;
+            document.getElementById('notif-msg').innerText = msg;
+            notif.style.display = 'block';
+            setTimeout(() => { notif.style.display = 'none'; }, 5000);
+        }
+
+        // Initialize map on load
+        window.onload = initMap;
+    </script>
+</body>
+</html>

@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GARUDA SANKET | Control Center</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+
+    <style>
+        :root {
+            --bg: #0f172a;
+            --card: #1e293b;
+            --text: #f8fafc;
+            --primary: #38bdf8;
+            --red: #ef4444;
+            --green: #22c55e;
+            --yellow: #eab308;
+            --accent: #8b5cf6;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: 'Inter', -apple-system, sans-serif;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 500px;
+            padding: 20px;
+        }
+
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 0 20px 0;
+            border-bottom: 1px solid #334155;
+            margin-bottom: 20px;
+        }
+
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        #status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #475569;
+        }
+
+        .online #status-dot {
+            background: var(--green);
+            box-shadow: 0 0 10px var(--green);
+        }
+
+        .control-card {
+            background: var(--card);
+            padding: 20px;
+            border-radius: 16px;
+            margin-bottom: 15px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            border: 1px solid #334155;
+        }
+
+        h3 {
+            margin-top: 0;
+            font-size: 0.9rem;
+            color: var(--primary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        button {
+            width: 100%;
+            border: none;
+            padding: 14px;
+            border-radius: 10px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: #334155;
+            color: white;
+            font-size: 0.9rem;
+        }
+
+        button:active {
+            transform: scale(0.96);
+        }
+
+        button:hover {
+            filter: brightness(1.2);
+        }
+
+        .btn-start {
+            background: var(--primary);
+            color: #0f172a;
+            font-size: 1.1rem;
+            margin-bottom: 15px;
+        }
+
+        .btn-lang {
+            background: #475569;
+        }
+
+        .active-lang {
+            border: 2px solid var(--primary);
+            background: #1e293b;
+        }
+
+        .btn-red {
+            background: var(--red);
+            grid-column: span 2;
+            padding: 20px;
+            font-size: 1.1rem;
+        }
+
+        .btn-yellow {
+            background: var(--yellow);
+            color: #000;
+        }
+
+        .btn-green {
+            background: var(--green);
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        #terminal {
+            background: #000;
+            padding: 10px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 0.75rem;
+            color: #10b981;
+            height: 100px;
+            overflow-y: auto;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+
+<body class="offline" id="body-status">
+    <div class="container">
+        <header>
+            <h1 style="margin:0; font-size: 1.5rem;">🦅 GARUDA SANKET</h1>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <a href="/buyer" style="color: var(--primary); text-decoration: none; font-size: 0.8rem; font-weight: bold;">BUYER</a>
+                <a href="/panchayat" style="color: var(--accent); text-decoration: none; font-size: 0.8rem; font-weight: bold;">PANCHAYAT</a>
+                <a href="/donor" id="donor-link" style="color: #4cd137; text-decoration: none; font-size: 0.8rem; font-weight: bold; border: 1px solid #4cd137; padding: 2px 8px; border-radius: 5px;">DONOR DASHBOARD</a>
+                <div class="status-badge">
+                    <div id="status-dot"></div>
+                    <span id="status-text">SYSTEM OFFLINE</span>
+                </div>
+            </div>
+        </header>
+
+        <div
+            style="font-size: 0.85rem; color: #f8fafc; text-align: center; margin: 0 0 20px 0; padding: 15px; background: rgba(56, 189, 248, 0.1); border-radius: 12px; border: 2px solid var(--primary); box-shadow: 0 0 15px rgba(56, 189, 248, 0.2);">
+            <span style="color: var(--primary); font-weight: 800; text-transform: uppercase; letter-spacing: 1px;">⚠️
+                IMPORTANT REFERENCE</span><br>
+            <p style="margin: 5px 0 0 0; opacity: 0.9;">In production, <b>keypad phones communicate directly with the
+                    server</b>. This dashboard is provided solely for visualization and judge reference.</p>
+        </div>
+
+        <section class="control-card">
+            <h3>1. Initialization</h3>
+            <button class="btn-start" onclick="triggerStart()">🚀 START NEW CALL</button>
+            <div class="grid">
+                <button class="btn-lang" id="btn-en" onclick="setLang('en')">ENGLISH</button>
+                <button class="btn-lang" id="btn-kn" onclick="setLang('kn')">ಕನ್ನಡ (KANNADA)</button>
+            </div>
+        </section>
+
+        <section class="control-card">
+            <h3>2. City Selection</h3>
+            <div class="grid">
+                <button onclick="selectCity('bangalore')">📍 BANGALORE</button>
+                <button onclick="selectCity('mysore')">📍 MYSORE</button>
+                <button onclick="selectCity('mandya')">📍 MANDYA</button>
+                <button onclick="selectCity('hassan')">📍 HASSAN</button>
+            </div>
+        </section>
+
+        <section class="control-card">
+            <h3>3. Domain Trigger</h3>
+            <div class="grid">
+                <button onclick="selectDomain('hunger')" style="grid-column: span 2; background: linear-gradient(to right, #00f2fe, #4facfe); color: #000; font-size: 1.2rem;">🥣 PRESS 1: FOOD REQUEST</button>
+                <!-- Agriculture and Healthcare hidden for now -->
+                <button onclick="selectDomain('agriculture')" class="hidden">🌾 AGRICULTURE</button>
+                <button onclick="selectDomain('healthcare')" class="hidden">🏥 HEALTHCARE</button>
+            </div>
+        </section>
+
+        <section id="group-type-menu" class="control-card hidden">
+            <h3>3.1 Order Type</h3>
+            <div class="grid">
+                <button onclick="selectGroupType('individual')">👤 INDIVIDUAL</button>
+                <button onclick="selectGroupType('group')">👥 GROUP</button>
+            </div>
+        </section>
+
+        <!-- Dial Donor Card (Appears after acceptance) -->
+        <section id="dial-donor-card" class="control-card hidden" style="border: 4px solid #4cd137; background: rgba(76, 209, 55, 0.2); box-shadow: 0 0 20px rgba(76, 209, 55, 0.4); transform: scale(1.05);">
+            <h3 style="color: #4cd137; font-size: 1.1rem; text-align: center;">🌟 DONOR ACCEPTED! 🌟</h3>
+            <p id="donor-accepted-msg" style="margin-bottom: 15px; font-size: 1rem; text-align: center; font-weight: bold;"></p>
+            <button onclick="dialDonor()" style="background: #4cd137; color: #000; font-size: 1.3rem; padding: 20px; animation: pulse 1.5s infinite;">📞 PRESS 1 TO DIAL DONOR</button>
+        </section>
+
+        <!-- Feedback Card (Appears at the end) -->
+        <section id="feedback-card" class="control-card hidden" style="border: 2px solid #00f2fe; margin-top: 20px;">
+            <h3 style="color: #00f2fe; font-size: 1.1rem; text-align: center;">💬 SYSTEM FEEDBACK</h3>
+            <p style="margin-bottom: 15px; font-size: 0.9rem; text-align: center; color: #a0a0a0;">Was this information helpful?</p>
+            <div class="grid">
+                <button onclick="submitFeedback(1)" style="background: #2ecc71; color: #fff; font-weight: bold;">👍 PRESS 1: AGREE</button>
+                <button onclick="submitFeedback(2)" style="background: #e74c3c; color: #fff; font-weight: bold;">👎 PRESS 2: DISAGREE</button>
+            </div>
+        </section>
+
+        <style>
+            @keyframes pulse {
+                0% { transform: scale(1); }
+                50% { transform: scale(1.02); }
+                100% { transform: scale(1); }
+            }
+        </style>
+
+        <section id="hunger-menu" class="control-card hidden">
+            <h3>3. Hunger Options</h3>
+            <div class="grid">
+                <button onclick="hungerAction('request')">🍲 REQUEST FOOD</button>
+                <button onclick="hungerAction('check')">📋 CHECK STATUS</button>
+            </div>
+        </section>
+
+        <section id="food-type-menu" class="control-card hidden">
+            <h3>3.1 Food Type</h3>
+            <div class="grid">
+                <button onclick="foodTypeAction('grains')">🌾 RAW GRAINS</button>
+                <button onclick="foodTypeAction('cooked')">🥘 COOKED MEAL</button>
+                <button onclick="foodTypeAction('baby')">🍼 BABY FOOD</button>
+            </div>
+        </section>
+
+
+        <section id="agri-menu" class="control-card hidden">
+            <h3>3. Agri Options</h3>
+            <div class="grid">
+                <button onclick="triggerAgri('market_price')">📉 MARKET PRICE</button>
+                <button onclick="triggerAgri('pest_report')">🐛 PEST REPORT</button>
+                <button onclick="triggerAgri('sarkari_help')">📜 SARKARI HELP</button>
+                <button onclick="triggerAgri('power_sell')">🤝 POWER SELL</button>
+            </div>
+        </section>
+
+        <section id="market-response-card" class="control-card hidden">
+            <h3>3.1 Market Confirmation</h3>
+            <div class="grid">
+                <button class="btn-green" onclick="marketResponse('agree')">✅ AGREE</button>
+                <button class="btn-red" onclick="marketResponse('disagree')">❌ DISAGREE</button>
+            </div>
+        </section>
+
+        <section id="pest-menu-card" class="control-card hidden">
+            <h3>3.1 Pest Specifics</h3>
+            <div class="grid">
+                <button onclick="pestAction('yellow_leaves')">🍂 YELLOW LEAVES</button>
+                <button onclick="pestAction('root_rot')">🌱 ROOT ROT</button>
+                <button onclick="pestAction('worms')">🐛 WORMS</button>
+            </div>
+        </section>
+
+        <section id="acreage-card" class="control-card hidden">
+            <h3>3.2 Land Acreage</h3>
+            <div class="grid">
+                <button onclick="sarkariAction('small')">🚜 1 - 5 ACRES</button>
+                <button onclick="sarkariAction('large')">🚜 > 5 ACRES</button>
+            </div>
+        </section>
+
+        <section id="sarkari-final-card" class="control-card hidden">
+            <h3>3.3 Application Status</h3>
+            <div class="grid">
+                <button class="btn-green" onclick="sarkariFinal('agree')">✅ SUBMIT APPLICATION</button>
+                <button class="btn-red" onclick="sarkariFinal('disagree')">❌ CANCEL</button>
+            </div>
+        </section>
+
+        <section id="health-menu" class="control-card hidden">
+            <h3>3. Health Options</h3>
+            <div class="grid">
+                <button class="btn-yellow" onclick="healthAction('sugar')">🍬 SUGAR CARE</button>
+                <button onclick="healthAction('bp')">🩺 BP CARE</button>
+                <button onclick="healthAction('symptom')">🤒 SYMPTOM CHECKER</button>
+                <button class="btn-green" onclick="healthAction('medicine')">💊 MED REMINDER</button>
+            </div>
+        </section>
+
+        <section id="sugar-menu-card" class="control-card hidden">
+            <h3>3.1 Sugar Specifics</h3>
+            <div class="grid">
+                <button class="btn-yellow" onclick="sugarAction('low')">📉 < 70 (LOW)</button>
+                <button class="btn-green" onclick="sugarAction('normal')">✅ 70-130 (NORMAL)</button>
+                <button class="btn-red" onclick="sugarAction('high')">📈 > 130 (HIGH)</button>
+            </div>
+        </section>
+
+        <section id="bp-menu-card" class="control-card hidden">
+            <h3>3.1 Blood Pressure Specifics</h3>
+            <div class="grid">
+                <button class="btn-yellow" onclick="bpAction('low')">📉 < 90 (LOW)</button>
+                <button class="btn-green" onclick="bpAction('normal')">✅ 90-120 (NORMAL)</button>
+                <button class="btn-red" onclick="bpAction('high')">📈 > 120 (HIGH)</button>
+            </div>
+        </section>
+
+        <section id="symptom-menu-card" class="control-card hidden">
+            <h3>3.1 Symptom Specifics</h3>
+            <div class="grid">
+                <button onclick="symptomAction('fever')">🌡️ FEVER</button>
+                <button onclick="symptomAction('headache')">🤕 HEADACHE</button>
+                <button onclick="symptomAction('body_pain')">🧍 BODY PAIN</button>
+                <button onclick="symptomAction('cold_cough')">🤧 COLD & COUGH</button>
+            </div>
+        </section>
+
+        <section class="control-card">
+            <h3>🚨 EMERGENCY ACTION</h3>
+            <div class="grid">
+                <button class="btn-red" onclick="triggerEmergency('RED')">🔴 RED: MEDICAL EMERGENCY</button>
+                <button class="btn-yellow" onclick="triggerEmergency('YELLOW')">🟡 YELLOW: URGENT</button>
+                <button class="btn-green" onclick="triggerEmergency('GREEN')">🟢 GREEN: INFO</button>
+            </div>
+        </section>
+
+        <div id="terminal">> Waiting for connection...</div>
+    </div>
+
+    <script>
+        const socket = io();
+        const logPanel = document.getElementById('terminal');
+
+        function log(msg) {
+            const time = new Date().toLocaleTimeString();
+            logPanel.innerHTML += `<div>[${time}] ${msg}</div>`;
+            logPanel.scrollTop = logPanel.scrollHeight;
+        }
+
+        socket.on('connect', () => {
+            document.getElementById('body-status').className = 'online';
+            document.getElementById('status-text').innerText = "SYSTEM ONLINE";
+            log("Connected to Garuda Sanket Server.");
+        });
+
+        socket.on('disconnect', () => {
+            document.getElementById('body-status').className = 'offline';
+            document.getElementById('status-text').innerText = "SYSTEM OFFLINE";
+            log("Disconnected from server.");
+        });
+
+        socket.on('status_update', (data) => {
+            log(data.msg);
+        });
+
+        // --- AUDIO PLAYBACK LOGIC ---
+        let currentAudio = null;
+        let bufferAudio = new Audio('/static/audio/thinking.mp3');
+        bufferAudio.loop = true;
+
+        socket.on('play_audio', (data) => {
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio.currentTime = 0;
+            }
+            if (bufferAudio) {
+                bufferAudio.pause();
+                bufferAudio.currentTime = 0;
+            }
+            currentAudio = new Audio(data.url);
+            currentAudio.play().catch(e => log("Audio playback failed: " + e));
+        });
+
+        socket.on('play_buffer', () => {
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio.currentTime = 0;
+            }
+            bufferAudio.play().catch(e => log("Buffer audio playback failed: " + e));
+        });
+
+        socket.on('stop_buffer', () => {
+            bufferAudio.pause();
+            bufferAudio.currentTime = 0;
+        });
+        // ------------------------------
+
+        socket.on('donor_accepted_notify', (data) => {
+            const card = document.getElementById('dial-donor-card');
+            card.classList.remove('hidden');
+            
+            const fbCard = document.getElementById('feedback-card');
+            fbCard.classList.remove('hidden');
+            
+            document.getElementById('donor-accepted-msg').innerText = `${data.donor_name} has accepted your request!`;
+            
+            // Auto-scroll to the button so the user sees it immediately
+            card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            
+            log(`ACTION REQUIRED: Press 1 to dial ${data.donor_name}`);
+            log(`FEEDBACK REQUIRED: Press 1 to Agree or 2 to Disagree`);
+        });
+
+        function submitFeedback(choice) {
+            document.getElementById('feedback-card').classList.add('hidden');
+            socket.emit('feedback_action', { choice: choice });
+        }
+
+        // ACTIONS
+        function triggerStart() {
+            socket.emit('trigger_start');
+            log("Triggered: Welcome Message");
+        }
+
+        function setLang(lang) {
+            socket.emit('select_language', { lang: lang });
+            document.getElementById('btn-en').classList.remove('active-lang');
+            document.getElementById('btn-kn').classList.remove('active-lang');
+            document.getElementById(`btn-${lang}`).classList.add('active-lang');
+            log(`Language set to: ${lang.toUpperCase()}`);
+        }
+
+        let currentCoords = { lat: 12.9716, lng: 77.5946 }; // Default Bangalore
+
+        function selectCity(city) {
+            sessionStorage.setItem('city', city);
+            socket.emit('select_city', { city: city });
+            log(`City: ${city.toUpperCase()}`);
+            
+            // Set default coordinates immediately
+            const cityCoords = {
+                'bangalore': { lat: 12.9716, lng: 77.5946 },
+                'mysore': { lat: 12.2958, lng: 76.6394 },
+                'mandya': { lat: 12.5218, lng: 76.8951 },
+                'hassan': { lat: 13.0068, lng: 76.1030 }
+            };
+            currentCoords = cityCoords[city.toLowerCase()] || cityCoords['bangalore'];
+
+            // Try to get precise GPS in background
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition((pos) => {
+                    currentCoords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+                    log("GPS Sync Successful");
+                }, null, { enableHighAccuracy: true });
+            }
+        }
+
+        function selectDomain(domain) {
+            document.getElementById('agri-menu').classList.add('hidden');
+            document.getElementById('health-menu').classList.add('hidden');
+            document.getElementById('hunger-menu').classList.add('hidden');
+            document.getElementById('food-type-menu').classList.add('hidden');
+            document.getElementById('group-type-menu').classList.add('hidden');
+
+            if (domain === 'hunger') {
+                document.getElementById('group-type-menu').classList.remove('hidden');
+                socket.emit('ask_group_type');
+                log('System asking for Group Type...');
+                return; // Wait for group type selection
+            }
+
+            socket.emit('select_domain', { 
+                domain: domain,
+                lat: currentCoords.lat,
+                lng: currentCoords.lng
+            });
+            log(`Domain Selected: ${domain.toUpperCase()}`);
+
+            if (domain === 'agriculture') {
+                document.getElementById('agri-menu').classList.remove('hidden');
+            } else if (domain === 'health' || domain === 'healthcare') {
+                document.getElementById('health-menu').classList.remove('hidden');
+            }
+        }
+
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371; // Radius of the earth in km
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                      Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        }
+
+        function selectGroupType(type) {
+            document.getElementById('group-type-menu').classList.add('hidden');
+            
+            let in_zone = false;
+            let ashramCoords = null;
+            
+            if (type === 'individual') {
+                // Offset currentCoords slightly to represent the Ashram location
+                ashramCoords = { lat: currentCoords.lat + 0.015, lng: currentCoords.lng + 0.015 };
+                const distance = calculateDistance(currentCoords.lat, currentCoords.lng, ashramCoords.lat, ashramCoords.lng);
+                in_zone = distance <= 3.0;
+            }
+
+            socket.emit('select_domain', { 
+                domain: 'hunger',
+                group_type: type,
+                in_zone: in_zone,
+                lat: currentCoords.lat,
+                lng: currentCoords.lng
+            });
+            log(`Domain Selected: HUNGER (${type.toUpperCase()})`);
+            
+            if (type === 'individual' && in_zone) {
+                // Map removed from main dashboard per request
+            }
+            
+            document.getElementById('hunger-menu').classList.remove('hidden');
+        }
+
+        function hungerAction(action) {
+            document.getElementById('food-type-menu').classList.add('hidden');
+            if (action === 'request') {
+                document.getElementById('food-type-menu').classList.remove('hidden');
+            }
+            socket.emit('hunger_action', { action: action });
+            log(`Hunger Action: ${action.toUpperCase()}`);
+        }
+
+        function foodTypeAction(type) {
+            document.getElementById('food-type-menu').classList.add('hidden');
+            socket.emit('food_type_action', { type: type });
+            log(`Food Type: ${type.toUpperCase()}`);
+        }
+
+        function dialDonor() {
+            document.getElementById('dial-donor-card').classList.add('hidden');
+            socket.emit('donor_dial');
+            log(`Dialing Donor...`);
+        }
+
+        function healthAction(action) {
+            document.getElementById('sugar-menu-card').classList.add('hidden');
+            document.getElementById('bp-menu-card').classList.add('hidden');
+            document.getElementById('symptom-menu-card').classList.add('hidden');
+
+            if (action === 'sugar') {
+                document.getElementById('sugar-menu-card').classList.remove('hidden');
+            } else if (action === 'bp') {
+                document.getElementById('bp-menu-card').classList.remove('hidden');
+            } else if (action === 'symptom') {
+                document.getElementById('symptom-menu-card').classList.remove('hidden');
+            }
+            // Medicine doesn't have a submenu yet, it just triggers audio.
+            socket.emit('health_action', { action: action });
+            log(`Health Action: ${action.toUpperCase()}`);
+        }
+
+        function sugarAction(level) {
+            document.getElementById('sugar-menu-card').classList.add('hidden');
+            socket.emit('sugar_action', { level: level });
+            log(`Sugar Level Selected: ${level.toUpperCase()}`);
+        }
+
+        function bpAction(level) {
+            document.getElementById('bp-menu-card').classList.add('hidden');
+            socket.emit('bp_action', { level: level });
+            log(`BP Level Selected: ${level.toUpperCase()}`);
+        }
+
+        function symptomAction(symptom) {
+            document.getElementById('symptom-menu-card').classList.add('hidden');
+            socket.emit('symptom_action', { symptom: symptom });
+            log(`Symptom Selected: ${symptom.toUpperCase()}`);
+        }
+
+        function triggerAgri(action) {
+            // Hide sub-menus first
+            document.getElementById('market-response-card').classList.add('hidden');
+            document.getElementById('pest-menu-card').classList.add('hidden');
+            document.getElementById('acreage-card').classList.add('hidden');
+            document.getElementById('sarkari-final-card').classList.add('hidden');
+
+            if (action === 'market_price') {
+                document.getElementById('market-response-card').classList.remove('hidden');
+            } else if (action === 'pest_report') {
+                document.getElementById('pest-menu-card').classList.remove('hidden');
+            } else if (action === 'sarkari_help') {
+                document.getElementById('acreage-card').classList.remove('hidden');
+            }
+            
+            socket.emit('agri_action', { action: action });
+            log(`Agri Action: ${action}`);
+        }
+
+        function marketResponse(response) {
+            document.getElementById('market-response-card').classList.add('hidden');
+            socket.emit('market_response', { response: response });
+            log(`Market Response: ${response.toUpperCase()}`);
+        }
+
+        function pestAction(problem) {
+            document.getElementById('pest-menu-card').classList.add('hidden');
+            socket.emit('pest_action', { problem: problem });
+            log(`Pest Action: ${problem.toUpperCase()}`);
+        }
+
+        function sarkariAction(acreage) {
+            document.getElementById('acreage-card').classList.add('hidden');
+            document.getElementById('sarkari-final-card').classList.remove('hidden');
+            socket.emit('sarkari_action', { acreage: acreage });
+            log(`Acreage Selected: ${acreage.toUpperCase()}`);
+        }
+
+        function sarkariFinal(decision) {
+            document.getElementById('sarkari-final-card').classList.add('hidden');
+            socket.emit('sarkari_final', { decision: decision });
+            log(`Scheme Decision: ${decision.toUpperCase()}`);
+        }
+
+        function triggerEmergency(level) {
+            socket.emit('emergency_trigger', { level: level });
+            log(`EMERGENCY: ${level} LEVEL ACTIVATED`);
+        }
+    </script>
+</body>
+
+</html>

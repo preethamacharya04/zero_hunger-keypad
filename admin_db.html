@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zero Hunger Database Admin</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-color: #f8f9fa;
+            --text-color: #212529;
+            --card-bg: #ffffff;
+            --border-color: #dee2e6;
+            --header-bg: #000000;
+            --header-text: #ffffff;
+            --accent: #000000;
+            --danger: #dc3545;
+            --success: #198754;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+        }
+
+        header {
+            background-color: var(--header-bg);
+            color: var(--header-text);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 1.5rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+
+        .full-width {
+            grid-column: 1 / -1;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+        }
+
+        .card h2 {
+            margin-top: 0;
+            font-size: 1.2rem;
+            border-bottom: 2px solid var(--accent);
+            padding-bottom: 0.5rem;
+            margin-bottom: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+
+        th, td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        th {
+            font-weight: 600;
+            color: #6c757d;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.5px;
+        }
+
+        tr:hover {
+            background-color: rgba(0,0,0,0.02);
+        }
+
+        .badge {
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .badge-danger {
+            background-color: rgba(220, 53, 69, 0.1);
+            color: var(--danger);
+            border: 1px solid var(--danger);
+        }
+
+        .badge-success {
+            background-color: rgba(25, 135, 84, 0.1);
+            color: var(--success);
+            border: 1px solid var(--success);
+        }
+
+        .badge-neutral {
+            background-color: #f8f9fa;
+            color: #495057;
+            border: 1px solid #ced4da;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+
+        .live-pulse {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background-color: var(--success);
+            border-radius: 50%;
+            margin-right: 8px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(25, 135, 84, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(25, 135, 84, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(25, 135, 84, 0); }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1><span class="live-pulse"></span> Zero Hunger // Administrative Database</h1>
+        <div style="font-size: 0.9rem; color: #adb5bd;">Antigravity Low-Code System</div>
+    </header>
+
+    <div class="container">
+        
+        <!-- Live Feed: Match Pending Users with Donations -->
+        <div class="card full-width">
+            <h2>Live Feed: Zone Matching 
+                <span class="badge badge-success" style="font-size: 0.7rem;">LIVE</span>
+            </h2>
+            <div style="overflow-x: auto; max-height: 300px;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Donation ID</th>
+                            <th>Donor Business</th>
+                            <th>Food Type</th>
+                            <th>Qty</th>
+                            <th>Status</th>
+                            <th>Time Remaining</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for d in data.donations %}
+                        <tr>
+                            <td>#{{ d.Donation_ID }}</td>
+                            <td><strong>{{ d.Business_Name }}</strong></td>
+                            <td>{{ d.Food_Type }}</td>
+                            <td>{{ d.Quantity }} units</td>
+                            <td>
+                                {% if d.Current_Status == 'Expired' %}
+                                    <span class="badge badge-danger">EXPIRED</span>
+                                {% elif d.Current_Status == 'Available' %}
+                                    <span class="badge badge-success">AVAILABLE</span>
+                                {% else %}
+                                    <span class="badge badge-neutral">{{ d.Current_Status | upper }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if d.Time_Remaining < 1 %}
+                                    <span style="color: var(--danger); font-weight: bold;">{{ d.Time_Remaining }} hrs</span>
+                                {% else %}
+                                    {{ d.Time_Remaining }} hrs
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Handshake Monitor -->
+        <div class="card">
+            <h2>Handshake Monitor</h2>
+            <div style="overflow-x: auto; max-height: 400px;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Tx ID</th>
+                            <th>Sector</th>
+                            <th>Freshness</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for t in data.transactions %}
+                        <tr {% if 'Rejected' in t.Verification_Status %}style="background-color: rgba(220, 53, 69, 0.05);"{% endif %}>
+                            <td>#{{ t.Transaction_ID }}</td>
+                            <td>{{ t.Sector_Point_ID }}</td>
+                            <td>CODE-{{ t.Freshness_Code }}</td>
+                            <td>
+                                {% if 'Rejected' in t.Verification_Status %}
+                                    <span class="badge badge-danger">{{ t.Verification_Status | upper }}</span>
+                                {% elif t.Verification_Status == 'Verified' %}
+                                    <span class="badge badge-success">{{ t.Verification_Status | upper }}</span>
+                                {% else %}
+                                    <span class="badge badge-neutral">{{ t.Verification_Status | upper }}</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Incentive Tracker Chart -->
+        <div class="card">
+            <h2>Incentive Tracker (Credits)</h2>
+            <div class="chart-container">
+                <canvas id="incentiveChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Recent Users -->
+        <div class="card">
+            <h2>Recent Users</h2>
+            <div style="overflow-x: auto; max-height: 300px;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>User ID</th>
+                            <th>Phone</th>
+                            <th>Zone</th>
+                            <th>Trust Score</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for u in data.users %}
+                        <tr>
+                            <td>#{{ u.User_ID }}</td>
+                            <td>{{ u.Phone_Number }}</td>
+                            <td>{{ u.Location_Zone }}</td>
+                            <td>
+                                <strong>{{ u.Trust_Score }}</strong>/100
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Top Donors -->
+        <div class="card">
+            <h2>Top Donors</h2>
+            <div style="overflow-x: auto; max-height: 300px;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Donor ID</th>
+                            <th>Business Name</th>
+                            <th>Type</th>
+                            <th>Rating</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for d in data.donors %}
+                        <tr>
+                            <td>#{{ d.Donor_ID }}</td>
+                            <td><strong>{{ d.Business_Name }}</strong></td>
+                            <td>{{ d.Donor_Type }}</td>
+                            <td>⭐ {{ d.Reliability_Rating }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // Prepare Data for Chart.js
+        const donorData = {{ data.donors | tojson | safe }};
+        
+        // Take top 10 for the chart
+        const topDonors = donorData.slice(0, 10);
+        
+        const labels = topDonors.map(d => d.Business_Name);
+        const credits = topDonors.map(d => d.Hunger_Credits_Balance);
+
+        const ctx = document.getElementById('incentiveChart').getContext('2d');
+        const incentiveChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Hunger Credits',
+                    data: credits,
+                    backgroundColor: '#000000',
+                    borderWidth: 1,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: '#f8f9fa'
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+
+        // Auto refresh page every 10 seconds to show live updates
+        setTimeout(() => {
+            window.location.reload();
+        }, 10000);
+    </script>
+</body>
+</html>
